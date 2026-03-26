@@ -6,6 +6,10 @@ from fastapi.responses import StreamingResponse
 from src.chain import run_agent, sql_chain, answer_chain, chart_intent_chain, stream_generate, llm
 import re
 
+def to_json(data):
+    """将数据转换为 UTF-8 编码的 JSON 字符串"""
+    return json.dumps(data, ensure_ascii=False)
+
 app = FastAPI(title="Fund AI Agent")
 app.add_middleware(
     CORSMiddleware,
@@ -52,7 +56,6 @@ async def generate_stream(question: str):
                 "product_type": "product_type",
                 "product_status": "product_status",
                 "product_name": "product_name",
-                "company": "company",
             }
             group_by = chart_config.get("group_by", "product_type")
             value_field = chart_config.get("value_field", "count")
@@ -72,11 +75,22 @@ async def generate_stream(question: str):
             from src.chain import safe_execute_sql
             data, msg = safe_execute_sql(sql)
             
+            # 图表生成：直接返回完整数据，不走流式
             if data:
-                chart_data = {'type': 'chart', 'chart': {'type': chart_config.get('chart_type', 'pie'), 'title': chart_config.get('title', '图表'), 'data': data}}
-                yield f"data: {json.dumps(chart_data)}\n\n"
-                done_data = {'type': 'done', 'content': f'已为您生成{chart_config.get("title", "图表")}'}
-                yield f"data: {json.dumps(done_data)}\n\n"
+                result = {
+                    'type': 'chart',
+                    'chart': {
+                        'type': chart_config.get('chart_type', 'pie'),
+                        'title': chart_config.get('title', '图表'),
+                        'data': data
+                    },
+                    'answer': f'已为您生成{chart_config.get("title", "图表")}'
+                }
+                yield f"data: {json.dumps(result, ensure_ascii=False)}\n\n"
+                return
+            else:
+                yield f"data: {json.dumps({'type': 'content', 'content': msg}, ensure_ascii=False)}\n\n"
+                yield f"data: {json.dumps({'type': 'done'})}\n\n"
                 return
         
         # 2. 生成SQL（流式）
@@ -84,7 +98,7 @@ async def generate_stream(question: str):
         for chunk in sql_chain.stream({"question": question}):
             if chunk:
                 sql_chunks.append(str(chunk))
-                yield f"data: {json.dumps({'type': 'thinking', 'content': '正在生成查询...'})}\n\n"
+                yield f"data: {json.dumps({'type': 'thinking', 'content': '正在生成查询...'}, ensure_ascii=False)}\n\n"
         
         sql = clean_sql("".join(sql_chunks))
         
@@ -103,14 +117,15 @@ async def generate_stream(question: str):
                 answer_chunks = []
                 for chunk in llm.stream(finance_prompt):
                     if chunk:
-                        answer_chunks.append(str(chunk))
-                        yield f"data: {json.dumps({'type': 'content', 'content': ''.join(answer_chunks)})}\n\n"
+                        chunk_str = str(chunk)
+                        answer_chunks.append(chunk_str)
+                        yield f"data: {json.dumps({'type': 'content', 'content': ''.join(answer_chunks)}, ensure_ascii=False)}\n\n"
                         await asyncio.sleep(0.01)
-                yield f"data: {json.dumps({'type': 'done'})}\n\n"
+                yield f"data: {json.dumps({'type': 'done'}, ensure_ascii=False)}\n\n"
                 return
             else:
-                yield f"data: {json.dumps({'type': 'content', 'content': '抱歉，我无法理解您的问题。我是一个基金数据查询助手，请询问关于产品、客户、持仓等数据库相关的问题。'})}\n\n"
-                yield f"data: {json.dumps({'type': 'done'})}\n\n"
+                yield f"data: {json.dumps({'type': 'content', 'content': '抱歉，我无法理解您的问题。我是一个基金数据查询助手，请询问关于产品、客户、持仓等数据库相关的问题。'}, ensure_ascii=False)}\n\n"
+                yield f"data: {json.dumps({'type': 'done'}, ensure_ascii=False)}\n\n"
                 return
         
         # 3. 执行SQL
@@ -118,30 +133,36 @@ async def generate_stream(question: str):
         data, msg = safe_execute_sql(sql)
         
         if data is None:
-            yield f"data: {json.dumps({'type': 'content', 'content': msg})}\n\n"
-            yield f"data: {json.dumps({'type': 'done'})}\n\n"
+            yield f"data: {json.dumps({'type': 'content', 'content': msg}, ensure_ascii=False)}\n\n"
+            yield f"data: {json.dumps({'type': 'done'}, ensure_ascii=False)}\n\n"
             return
         
         if not data:
-            yield f"data: {json.dumps({'type': 'content', 'content': '未查询到数据'})}\n\n"
-            yield f"data: {json.dumps({'type': 'done'})}\n\n"
+            yield f"data: {json.dumps({'type': 'content', 'content': '未查询到数据'}, ensure_ascii=False)}\n\n"
+            yield f"data: {json.dumps({'type': 'done'}, ensure_ascii=False)}\n\n"
             return
         
         # 4. 生成回答（流式）
-        yield f"data: {json.dumps({'type': 'thinking', 'content': '正在生成回答...'})}\n\n"
+        yield f"data: {json.dumps({'type': 'thinking', 'content': '正在生成回答...'}, ensure_ascii=False)}\n\n"
         
         answer_chunks = []
         for chunk in answer_chain.stream({"question": question, "data": str(data)}):
             if chunk:
-                answer_chunks.append(str(chunk))
-                yield f"data: {json.dumps({'type': 'content', 'content': ''.join(answer_chunks)})}\n\n"
+                chunk_str = str(chunk)
+                answer_chunks.append(chunk_str)
+                yield f"data: {json.dumps({'type': 'content', 'content': ''.join(answer_chunks)}, ensure_ascii=False)}\n\n"
                 await asyncio.sleep(0.01)  # 让前端有时间处理
         
-        yield f"data: {json.dumps({'type': 'done'})}\n\n"
+        yield f"data: {json.dumps({'type': 'done'}, ensure_ascii=False)}\n\n"
         
     except Exception as e:
-        yield f"data: {json.dumps({'type': 'content', 'content': f'服务异常：{str(e)}'})}\n\n"
-        yield f"data: {json.dumps({'type': 'done'})}\n\n"
+        import traceback
+        error_detail = traceback.format_exc()
+        error_msg = f'服务异常：{str(e)}'
+        print(f"[ERROR] {error_msg}")
+        print(f"[TRACE] {error_detail}")
+        yield f"data: {json.dumps({'type': 'content', 'content': error_msg}, ensure_ascii=False)}\n\n"
+        yield f"data: {json.dumps({'type': 'done'}, ensure_ascii=False)}\n\n"
 
 @app.post("/ai/query")
 async def ai_query(data: dict):
@@ -151,7 +172,22 @@ async def ai_query(data: dict):
 async def ai_stream(data: dict):
     """流式响应端点"""
     question = data.get("question", "")
-    return StreamingResponse(generate_stream(question), media_type="text/event-stream")
+    
+    async def encode_stream():
+        """将字符串流转换为 UTF-8 字节流"""
+        async for chunk in generate_stream(question):
+            if isinstance(chunk, str):
+                yield chunk.encode('utf-8')
+            elif isinstance(chunk, bytes):
+                yield chunk
+            else:
+                yield str(chunk).encode('utf-8')
+    
+    return StreamingResponse(
+        encode_stream(),
+        media_type="text/event-stream",
+        headers={"Content-Type": "text/event-stream; charset=utf-8"}
+    )
 
 @app.post("/ai/clear")
 async def clear_chat():
@@ -159,4 +195,4 @@ async def clear_chat():
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run("main:app", host="127.0.0.1", port=8001, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=8001, reload=True)

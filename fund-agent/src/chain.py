@@ -27,7 +27,12 @@ llm = Tongyi(
 # 数据库连接（单例）
 # ======================
 engine = create_engine(
-    f"mysql+pymysql://{os.getenv('DB_USER')}:{os.getenv('DB_PASS')}@{os.getenv('DB_HOST')}/{os.getenv('DB_NAME')}"
+    f"mysql+pymysql://{os.getenv('DB_USER')}:{os.getenv('DB_PASS')}@{os.getenv('DB_HOST')}/{os.getenv('DB_NAME')}?charset=utf8mb4",
+    pool_pre_ping=True,
+    pool_recycle=3600,
+    connect_args={
+        "charset": "utf8mb4"
+    }
 )
 
 # ======================
@@ -123,6 +128,9 @@ def safe_execute_sql(sql: str):
                 df = pd.read_sql(sql, conn)
                 return df.to_dict("records"), "查询成功"
     except Exception as e:
+        import traceback
+        print(f"[SQL ERROR] {str(e)}")
+        print(f"[SQL TRACE] {traceback.format_exc()}")
         return None, f"SQL错误：{str(e)}"
 
 def parse_chart_intent(question: str) -> Optional[Dict]:
@@ -132,7 +140,8 @@ def parse_chart_intent(question: str) -> Optional[Dict]:
         result_chunks = []
         for chunk in chart_intent_chain.stream({"question": question}):
             if chunk:
-                result_chunks.append(str(chunk))
+                chunk_str = str(chunk)
+                result_chunks.append(chunk_str)
         result = "".join(result_chunks)
         # 清洗 JSON
         result = result.strip()
@@ -156,7 +165,6 @@ def generate_chart_sql(chart_config: Dict, table: str = "products") -> str:
         "product_type": "product_type",
         "product_status": "product_status",
         "product_name": "product_name",
-        "company": "company",
     }
     db_field = field_mapping.get(group_by, group_by)
 
@@ -279,13 +287,14 @@ def run_agent(question: str) -> Dict:
             sql_chunks = []
             for chunk in sql_chain.stream({"question": question}):
                 if chunk:
-                    sql_chunks.append(str(chunk))
+                    chunk_str = str(chunk)
+                    sql_chunks.append(chunk_str)
             sql = clean_sql("".join(sql_chunks))
             
             # 空SQL校验
             if not sql or sql.strip() == "":
                 # 检测是否涉及金融相关问题
-                finance_keywords = ["基金", "股票", "债券", "货币", "理财", "净值", "收益率", "ETF", "FOF", "LOF", "私募", "公募"]
+                finance_keywords = ["基金", "股票", "债券", "货币", "理财", "净值", "收益率", "ETF", "FOF", "LOF", "私募", "公募", "量化", "交易"]
                 is_finance_related = any(kw in question for kw in finance_keywords)
                 
                 if is_finance_related:
@@ -307,7 +316,8 @@ def run_agent(question: str) -> Dict:
             answer_chunks = []
             for chunk in answer_chain.stream({"question": question, "data": str(data)}):
                 if chunk:
-                    answer_chunks.append(str(chunk))
+                    chunk_str = str(chunk)
+                    answer_chunks.append(chunk_str)
             answer = "".join(answer_chunks)
             return {"answer": answer, "stream": True}
 

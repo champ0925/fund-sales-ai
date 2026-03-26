@@ -2,7 +2,6 @@ import { useState, useRef, useEffect } from 'react'
 import { Card, Input, Button, List, Typography, Spin } from 'antd'
 import { MessageOutlined, SendOutlined, LoadingOutlined, DeleteOutlined } from '@ant-design/icons'
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, Tooltip, Legend, LineChart, Line, RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis } from 'recharts'
-import axios from 'axios'
 
 const { Paragraph } = Typography
 
@@ -23,7 +22,25 @@ const INPUT_STORAGE_KEY = 'fund_ai_input'
 
 const DEFAULT_WELCOME: Message = {
   type: 'ai',
-  content: '你好！我是基金智能助手，我可以帮你完成多种任务：\n\n📊 **数据查询** - 帮我查一下股票型基金有哪些？运作中的产品有多少？\n\n📈 **生成图表** - 帮我生成按产品类型分组的规模占比饼图、柱状图、雷达图\n\n➕ **添加产品** - 帮我添加一个产品，产品名称是xxx，产品类型是股票型\n\n💡 试试这样说："帮我生成按产品类型分组的数量饼图"'
+  content: `你好！我是基金智能助手，我可以帮你完成以下任务：
+
+📋 查询客户资料
+  - 帮我查一下有哪些客户？
+  - 查看客户张总的持仓情况
+
+📦 管理产品
+  - 帮我添加一个产品，产品名称是xxx，产品类型是股票型
+  - 查询现在有哪些股票型基金？
+
+📊 生成图表
+  - 帮我生成按产品类型分组的数量饼图
+  - 生成按产品状态分组的规模柱状图
+
+💡 金融知识问答
+  - 什么是基金定投？
+  - 股票型和债券型有什么区别？
+
+💬 试试这样说："帮我生成按产品类型分组的数量饼图"`
 }
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8', '#82ca9d']
@@ -155,8 +172,10 @@ export default function AIAgent() {
       }
     }, 0)
 
+    const AI_API_URL = import.meta.env.VITE_AI_API_URL || 'http://localhost:8001'
+
     try {
-      const response = await fetch('http://localhost:8001/ai/stream', {
+      const response = await fetch(`${AI_API_URL}/ai/stream`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -216,17 +235,15 @@ export default function AIAgent() {
                   }
                 })
               } else if (data.type === 'chart') {
-                // 添加图表
+                // 添加图表（图表不走流式，直接创建消息）
                 setMessages(prev => {
                   const filtered = prev.filter(m => m.type !== 'thinking')
-                  const lastAiMsg = filtered[filtered.length - 1]
-                  if (lastAiMsg && lastAiMsg.type === 'ai') {
-                    return [
-                      ...filtered.slice(0, -1),
-                      { ...lastAiMsg, chart: data.chart }
-                    ]
+                  const newMsg = {
+                    type: 'ai' as const,
+                    content: data.answer || '已为您生成图表',
+                    chart: data.chart
                   }
-                  return filtered
+                  return [...filtered, newMsg]
                 })
               } else if (data.type === 'done') {
                 // 完成
@@ -324,7 +341,7 @@ export default function AIAgent() {
                     background: item.type === 'user' ? '#e6f7ff' : '#f5f5f5'
                   }}
                 >
-                  <Paragraph>{item.content}</Paragraph>
+                  <Paragraph style={{ whiteSpace: 'pre-wrap' }}>{item.content}</Paragraph>
                   {item.chart && (
                     <div style={{ marginTop: 16 }}>
                       <h4 style={{ marginBottom: 8 }}>{item.chart.title}</h4>

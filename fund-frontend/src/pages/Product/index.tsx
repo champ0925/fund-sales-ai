@@ -33,7 +33,11 @@ export default function Product() {
   const [filteredList, setFilteredList] = useState<ProductItem[]>([])
   const [visible, setVisible] = useState(false)
   const [current, setCurrent] = useState<ProductItem | null>(null)
-  
+
+  // 筛选条件状态
+  const [selectedType, setSelectedType] = useState<string | undefined>(undefined)
+  const [selectedStatus, setSelectedStatus] = useState<string | undefined>(undefined)
+
   // Modal 相关状态
   const [modalVisible, setModalVisible] = useState(false)
   const [modalTitle, setModalTitle] = useState('新增产品')
@@ -75,21 +79,28 @@ export default function Product() {
 
   // 按类型筛选
   const handleTypeChange = (value: string) => {
-    if (!value) {
-      setFilteredList(productList)
-      return
-    }
-    const result = productList.filter((item) => item.product_type === value)
-    setFilteredList(result)
+    setSelectedType(value || undefined)
+    applyFiltersWithStatus(value || undefined, selectedStatus)
   }
 
   // 按状态筛选
   const handleStatusChange = (value: string) => {
-    if (!value) {
-      setFilteredList(productList)
-      return
+    setSelectedStatus(value || undefined)
+    applyFiltersWithStatus(selectedType, value || undefined)
+  }
+
+  // 统一筛选处理函数
+  const applyFiltersWithStatus = (type: string | undefined, status: string | undefined) => {
+    let result = productList
+
+    if (type) {
+      result = result.filter((item) => item.product_type === type)
     }
-    const result = productList.filter((item) => item.product_status === value)
+
+    if (status) {
+      result = result.filter((item) => item.product_status === status)
+    }
+
     setFilteredList(result)
   }
 
