@@ -11,13 +11,13 @@
 
 1.2 已实现的功能  ---> 为所用技术栈
 
- （1）产品管理 : 增删改查 ---> Express API + MySQL
- （2）客户管理 : 增删改查 ---> Express API + MySQL
- （3）持仓管理 : 增删改查 ---> Express API + MySQL
- （4）跟进记录 : 增删改查 ---> Express API + MySQL
- （5）AI 问答 : 自然语言转SQL ---> Python + LangChain + 通义千问
- （6）图表生成 : 饼图/柱状图/折线图 ---> LLM意图识别 + Recharts
- （7）金融知识问答 : 非数据库问题解答 ---> LLM 流式输出 
+ （1）产品管理 : 增删改查 ---> Express API + MySQL <br>
+ （2）客户管理 : 增删改查 ---> Express API + MySQL <br>
+ （3）持仓管理 : 增删改查 ---> Express API + MySQL <br>
+ （4）跟进记录 : 增删改查 ---> Express API + MySQL <br>
+ （5）AI 问答 : 自然语言转SQL ---> Python + LangChain + 通义千问 <br>
+ （6）图表生成 : 饼图/柱状图/折线图 ---> LLM意图识别 + Recharts <br>
+ （7）金融知识问答 : 非数据库问题解答 ---> LLM 流式输出  <br>
 
 1.3 选型理由
 
