@@ -156,18 +156,18 @@ INSERT INTO products (product_name, product_type, latest_nav, ...) VALUES (...)
 
 4.2 真实企业项目的差异化决策;如果这是真实的企业项目，我会做以下调整：
 
-1.技术栈选择
+1. 技术栈选择
    -后端用 Java Spring Boot 替代 Express（企业级稳定性） 
    - 数据库选型考虑读写分离、分库分表 
    - 引入 Redis 缓存热点数据
 
-2.安全合规
+2. 安全合规
    - 全链路 HTTPS
    - JWT + RBAC 权限控制
    - SQL 白名单机制，禁止 LLM 直接执行生成式 SQL
    - 敏感操作日志审计
 
-3.AI改进
+3. AI改进
    - 使用 RAG 接入企业内部知识库
    - 多模型ensemble，提升回复准确性
    - 对话上下文持久化，支持多轮对话
