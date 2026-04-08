@@ -6,6 +6,8 @@ mysql-connector-python
 pymysql
 sqlalchemy
 langchain-community
+langchain-text-splitters
 dashscope
 pandas
 python-multipart
+chromadb

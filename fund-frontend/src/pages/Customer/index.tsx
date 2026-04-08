@@ -1,59 +1,141 @@
+// =====================
+// React 核心 hooks
+// =====================
+/**
+ * useState: 用于在函数组件中添加状态
+ * useEffect: 用于处理副作用，如组件挂载时获取数据
+ */
 import { useState, useEffect } from 'react'
+
+// =====================
+// Ant Design 组件
+// =====================
+/**
+ * Table: 表格组件
+ * Button: 按钮组件
+ * Card: 卡片组件
+ * Tabs: 标签页组件，TabPane 是标签页面板
+ * Input: 输入框组件，Search 是搜索输入框
+ * Modal: 弹窗组件
+ * message: 全局提示组件
+ * Popconfirm: 气泡确认框
+ * Select: 下拉选择器，Option 是选项组件
+ */
 import { Table, Button, Card, Tabs, Input, Modal, message, Popconfirm, Select } from 'antd'
+
+// =====================
+// Ant Design Icons
+// =====================
+/**
+ * PlusOutlined: 添加图标
+ * DeleteOutlined: 删除图标
+ * ReloadOutlined: 刷新图标
+ */
 import { PlusOutlined, DeleteOutlined, ReloadOutlined } from '@ant-design/icons'
+
+// =====================
+// 网络请求和日期处理
+// =====================
+/**
+ * axios: HTTP 客户端库
+ * dayjs: 日期处理库（轻量级的 moment.js 替代品）
+ */
 import axios from 'axios'
 import dayjs from 'dayjs'
+
+// API 配置
 import apiConfig from '../../utils/api'
 
+// =====================
+// 解构组件
+// =====================
+/**
+ * Search: 搜索输入框组件
+ */
 const { Search } = Input
+
+/**
+ * Option: 下拉选择器选项
+ */
 const { Option } = Select
+
+/**
+ * TabPane: 标签页面板（Tabs 的子组件）
+ */
 const { TabPane } = Tabs
 
-// 检测是否为移动端（备用方案）
+// =====================
+// 自定义 Hook: 检测移动端
+// =====================
+/**
+ * useIsMobile Hook
+ * 检测当前是否为移动端设备（窗口宽度 < 768px）
+ */
 const useIsMobile = () => {
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 768)
     window.addEventListener('resize', handleResize)
+    // 清理函数：组件卸载时移除事件监听
     return () => window.removeEventListener('resize', handleResize)
   }, [])
   return isMobile
 }
 
+// =====================
 // TypeScript 类型定义
+// =====================
+
+/**
+ * 客户数据类型
+ */
 interface Customer {
-  id: number
-  customer_name: string
-  phone: string
-  company: string
-  customer_status: string
-  create_time: string
+  id: number             // 客户唯一ID
+  customer_name: string  // 客户姓名
+  phone: string          // 联系电话
+  company: string        // 所属公司
+  customer_status: string // 客户状态（意向/合作/流失）
+  create_time: string    // 创建时间
 }
 
+/**
+ * 客户持有产品数据类型
+ * 记录客户购买的产品信息
+ */
 interface Product {
-  id: number
-  product_id: number
-  product_name: string
-  product_type: string
-  hold_amount: number
-  buy_time: string
+  id: number             // 记录ID
+  product_id: number     // 产品ID（关联 products 表）
+  product_name: string   // 产品名称
+  product_type: string   // 产品类型
+  hold_amount: number    // 持有金额（万元）
+  buy_time: string       // 购买时间
 }
 
+/**
+ * 客户跟进记录数据类型
+ */
 interface Follow {
-  id: number
-  follow_way: string
-  follow_content: string
-  follow_time: string
-  next_plan: string
+  id: number             // 记录ID
+  follow_way: string     // 跟进方式（电话/微信/面谈）
+  follow_content: string // 跟进内容
+  follow_time: string    // 跟进时间
+  next_plan: string      // 下次计划
 }
 
+/**
+ * 产品选项数据类型
+ * 用于下拉选择产品
+ */
 interface AllProduct {
-  id: number
-  product_name: string
-  product_type: string
+  id: number             // 产品ID
+  product_name: string   // 产品名称
+  product_type: string   // 产品类型
 }
 
 // 表单数据类型
+/**
+ * 客户表单数据类型
+ */
 interface CustomerFormData {
   customer_name: string
   phone: string
@@ -61,12 +143,18 @@ interface CustomerFormData {
   customer_status: string
 }
 
+/**
+ * 持有产品表单数据类型
+ */
 interface HoldFormData {
   product_id: number
   hold_amount: number
   buy_time: string
 }
 
+/**
+ * 跟进记录表单数据类型
+ */
 interface FollowFormData {
   follow_way: string
   follow_content: string
@@ -74,54 +162,115 @@ interface FollowFormData {
   next_plan: string
 }
 
+/**
+ * Customer 客户管理页面组件
+ * 用于管理客户信息、持有产品和跟进记录
+ */
 export default function Customer() {
   const isMobile = useIsMobile()
+  
+  // =====================
+  // 状态定义
+  // =====================
+  
+  /**
+   * 客户列表状态
+   * 存储从 API 获取的所有客户数据
+   */
   const [list, setList] = useState<Customer[]>([])
+  
+  /**
+   * 筛选后的客户列表
+   */
   const [filteredList, setFilteredList] = useState<Customer[]>([])
+  
+  /**
+   * 所有产品列表（用于新增持有产品时选择）
+   */
   const [allProducts, setAllProducts] = useState<AllProduct[]>([])
+  
+  /**
+   * 当前查看的客户 ID
+   * 用于展示该客户的详情（持有产品、跟进记录）
+   */
   const [currentId, setCurrentId] = useState<number | null>(null)
+  
+  /**
+   * 当前查看的客户姓名
+   * 用于在详情标题中显示
+   */
   const [currentCustomerName, setCurrentCustomerName] = useState<string>('')
+  
+  /**
+   * 当前客户的持有产品列表
+   */
   const [products, setProducts] = useState<Product[]>([])
+  
+  /**
+   * 当前客户的跟进记录列表
+   */
   const [follows, setFollows] = useState<Follow[]>([])
   
   // 客户 Modal 相关状态
+  /** 客户表单弹窗是否可见 */
   const [customerModalVisible, setCustomerModalVisible] = useState(false)
+  /** 客户表单弹窗标题 */
   const [customerModalTitle, setCustomerModalTitle] = useState('新增客户')
+  /** 客户表单数据 */
   const [customerFormData, setCustomerFormData] = useState<CustomerFormData>({
     customer_name: '',
     phone: '',
     company: '',
     customer_status: '意向'
   })
+  /** 编辑中的客户 ID，null 表示新增 */
   const [editingCustomerId, setEditingCustomerId] = useState<number | null>(null)
   
   // 持有产品 Modal 相关状态
+  /** 持有产品表单弹窗是否可见 */
   const [holdModalVisible, setHoldModalVisible] = useState(false)
+  /** 持有产品表单弹窗标题 */
   const [holdModalTitle, setHoldModalTitle] = useState('新增持有产品')
+  /** 持有产品表单数据 */
   const [holdFormData, setHoldFormData] = useState<HoldFormData>({
     product_id: 0,
     hold_amount: 0,
-    buy_time: dayjs().format('YYYY-MM-DD')
+    buy_time: dayjs().format('YYYY-MM-DD')  // 默认今天日期
   })
+  /** 编辑中的持有产品 ID */
   const [editingHoldId, setEditingHoldId] = useState<number | null>(null)
   
   // 跟进记录 Modal 相关状态
+  /** 跟进记录表单弹窗是否可见 */
   const [followModalVisible, setFollowModalVisible] = useState(false)
+  /** 跟进记录表单弹窗标题 */
   const [followModalTitle, setFollowModalTitle] = useState('新增跟进记录')
+  /** 跟进记录表单数据 */
   const [followFormData, setFollowFormData] = useState<FollowFormData>({
     follow_way: '电话',
     follow_content: '',
     follow_time: dayjs().format('YYYY-MM-DD'),
     next_plan: ''
   })
+  /** 编辑中的跟进记录 ID */
   const [editingFollowId, setEditingFollowId] = useState<number | null>(null)
   
-  // 多选相关
+  // 多选相关状态
+  /** 客户列表选中项 */
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
+  /** 持有产品列表选中项 */
   const [selectedProductKeys, setSelectedProductKeys] = useState<React.Key[]>([])
+  /** 跟进记录列表选中项 */
   const [selectedFollowKeys, setSelectedFollowKeys] = useState<React.Key[]>([])
 
-  // 获取客户列表
+  // =====================
+  // 数据获取函数
+  // =====================
+
+  /**
+   * 获取客户列表
+   * 从 API 获取所有客户数据
+   */
   const getList = async () => {
     try {
       const res = await axios.get(apiConfig.endpoints.customers)
@@ -132,7 +281,10 @@ export default function Customer() {
     }
   }
 
-  // 获取所有产品列表（用于选择）
+  /**
+   * 获取所有产品列表
+   * 用于在新增持有产品时提供产品选择
+   */
   const getAllProducts = async () => {
     try {
       const res = await axios.get(apiConfig.endpoints.products)
@@ -142,7 +294,11 @@ export default function Customer() {
     }
   }
 
-  // 获取客户持有产品
+  /**
+   * 获取客户持有产品
+   * 根据客户 ID 获取该客户持有的所有产品
+   * @param id - 客户 ID
+   */
   const getProducts = async (id: number) => {
     try {
       const res = await axios.get(apiConfig.endpoints.customerProducts(id))
@@ -152,7 +308,11 @@ export default function Customer() {
     }
   }
 
-  // 获取客户跟进记录
+  /**
+   * 获取客户跟进记录
+   * 根据客户 ID 获取该客户的所有跟进记录
+   * @param id - 客户 ID
+   */
   const getFollows = async (id: number) => {
     try {
       const res = await axios.get(apiConfig.endpoints.followCustomer(id))
@@ -162,20 +322,38 @@ export default function Customer() {
     }
   }
 
+  /**
+   * 组件挂载后获取初始数据
+   */
   useEffect(() => {
     getList()
     getAllProducts()
   }, [])
 
-  // 搜索
+  // =====================
+  // 搜索处理函数
+  // =====================
+
+  /**
+   * 搜索处理函数
+   * 根据客户姓名或公司名称进行模糊搜索
+   * @param value - 搜索关键字
+   */
   const handleSearch = (value: string) => {
+    // 同时按姓名和公司搜索
     const result = list.filter((item) =>
       item.customer_name.includes(value) || item.company.includes(value)
     )
     setFilteredList(result)
   }
 
-  // ===== 客户操作 =====
+  // =====================
+  // 客户 CRUD 操作
+  // =====================
+
+  /**
+   * 新增客户处理函数
+   */
   const handleAddCustomer = () => {
     setCustomerModalTitle('新增客户')
     setEditingCustomerId(null)
@@ -188,6 +366,10 @@ export default function Customer() {
     setCustomerModalVisible(true)
   }
 
+  /**
+   * 编辑客户处理函数
+   * @param record - 要编辑的客户记录
+   */
   const handleEditCustomer = (record: Customer) => {
     setCustomerModalTitle('编辑客户')
     setEditingCustomerId(record.id)
@@ -200,11 +382,15 @@ export default function Customer() {
     setCustomerModalVisible(true)
   }
 
+  /**
+   * 删除客户处理函数
+   * @param id - 要删除的客户 ID
+   */
   const handleDeleteCustomer = async (id: number) => {
     try {
       await axios.delete(`${apiConfig.endpoints.customers}/${id}`)
       message.success('删除成功')
-      // 如果删除的是当前查看的客户，关闭详情
+      // 如果删除的是当前查看的客户，关闭详情面板
       if (currentId === id) {
         setCurrentId(null)
         setCurrentCustomerName('')
@@ -217,6 +403,9 @@ export default function Customer() {
     }
   }
 
+  /**
+   * 批量删除客户处理函数
+   */
   const handleBatchDeleteCustomer = async () => {
     try {
       await axios.post(apiConfig.endpoints.customerBatchDelete, {
@@ -230,12 +419,18 @@ export default function Customer() {
     }
   }
 
+  /**
+   * 提交客户表单
+   * 根据 editingCustomerId 判断是新增还是编辑
+   */
   const handleSubmitCustomer = async () => {
     try {
       if (editingCustomerId) {
+        // 编辑模式
         await axios.put(`${apiConfig.endpoints.customers}/${editingCustomerId}`, customerFormData)
         message.success('编辑成功')
       } else {
+        // 新增模式
         await axios.post(apiConfig.endpoints.customers, customerFormData)
         message.success('新增成功')
       }
@@ -246,7 +441,13 @@ export default function Customer() {
     }
   }
 
-  // ===== 持有产品操作 =====
+  // =====================
+  // 持有产品 CRUD 操作
+  // =====================
+
+  /**
+   * 新增持有产品处理函数
+   */
   const handleAddHold = () => {
     setHoldModalTitle('新增持有产品')
     setEditingHoldId(null)
@@ -258,9 +459,14 @@ export default function Customer() {
     setHoldModalVisible(true)
   }
 
+  /**
+   * 编辑持有产品处理函数
+   * @param record - 要编辑的持有产品记录
+   */
   const handleEditHold = (record: Product) => {
     setHoldModalTitle('编辑持有产品')
     setEditingHoldId(record.id)
+    // 处理日期格式：后端返回的可能是 ISO 格式，如 "2024-02-01T00:00:00"
     setHoldFormData({
       product_id: record.product_id,
       hold_amount: record.hold_amount,
@@ -269,6 +475,10 @@ export default function Customer() {
     setHoldModalVisible(true)
   }
 
+  /**
+   * 删除持有产品处理函数
+   * @param id - 要删除的持有产品记录 ID
+   */
   const handleDeleteHold = async (id: number) => {
     try {
       await axios.delete(apiConfig.endpoints.customerHoldDetail(id))
@@ -279,6 +489,9 @@ export default function Customer() {
     }
   }
 
+  /**
+   * 批量删除持有产品处理函数
+   */
   const handleBatchDeleteHold = async () => {
     try {
       await axios.post(apiConfig.endpoints.customerHoldBatchDelete, {
@@ -292,15 +505,20 @@ export default function Customer() {
     }
   }
 
+  /**
+   * 提交持有产品表单
+   */
   const handleSubmitHold = async () => {
     try {
       if (editingHoldId) {
+        // 编辑模式
         await axios.put(apiConfig.endpoints.customerHoldDetail(editingHoldId), holdFormData)
         message.success('编辑成功')
       } else {
+        // 新增模式，需要传入 customer_id
         await axios.post(apiConfig.endpoints.customerHold, {
           customer_id: currentId,
-          ...holdFormData
+          ...holdFormData  // 展开运算符，合并表单数据
         })
         message.success('新增成功')
       }
@@ -311,7 +529,13 @@ export default function Customer() {
     }
   }
 
-  // ===== 跟进记录操作 =====
+  // =====================
+  // 跟进记录 CRUD 操作
+  // =====================
+
+  /**
+   * 新增跟进记录处理函数
+   */
   const handleAddFollow = () => {
     setFollowModalTitle('新增跟进记录')
     setEditingFollowId(null)
@@ -324,18 +548,27 @@ export default function Customer() {
     setFollowModalVisible(true)
   }
 
+  /**
+   * 编辑跟进记录处理函数
+   * @param record - 要编辑的跟进记录
+   */
   const handleEditFollow = (record: Follow) => {
     setFollowModalTitle('编辑跟进记录')
     setEditingFollowId(record.id)
     setFollowFormData({
       follow_way: record.follow_way,
       follow_content: record.follow_content,
+      // 处理日期格式
       follow_time: record.follow_time ? record.follow_time.split('T')[0] : dayjs().format('YYYY-MM-DD'),
       next_plan: record.next_plan
     })
     setFollowModalVisible(true)
   }
 
+  /**
+   * 删除跟进记录处理函数
+   * @param id - 要删除的跟进记录 ID
+   */
   const handleDeleteFollow = async (id: number) => {
     try {
       await axios.delete(apiConfig.endpoints.followDetail(id))
@@ -346,6 +579,9 @@ export default function Customer() {
     }
   }
 
+  /**
+   * 批量删除跟进记录处理函数
+   */
   const handleBatchDeleteFollow = async () => {
     try {
       await axios.post(apiConfig.endpoints.followBatchDelete, {
@@ -359,12 +595,17 @@ export default function Customer() {
     }
   }
 
+  /**
+   * 提交跟进记录表单
+   */
   const handleSubmitFollow = async () => {
     try {
       if (editingFollowId) {
+        // 编辑模式
         await axios.put(apiConfig.endpoints.followDetail(editingFollowId), followFormData)
         message.success('编辑成功')
       } else {
+        // 新增模式，需要传入 customer_id
         await axios.post(apiConfig.endpoints.followAdd, {
           customer_id: currentId,
           ...followFormData

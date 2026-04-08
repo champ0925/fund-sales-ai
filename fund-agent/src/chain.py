@@ -134,6 +134,16 @@ def safe_execute_sql(sql: str, question: str = ""):
             # 非查询类问题，返回友好提示
             return None, "我是一个基金数据查询助手，请询问关于产品、客户、持仓、跟进记录等数据库相关的问题，例如：帮我查询有哪些产品、客户持仓情况、跟进记录等。"
     
+    # 基础校验：检查是否是需要数据库查询的内容
+    sql_stripped = sql.strip()
+    
+    # 如果SQL明显不是有效的SQL语句（可能是LLM返回的文本提示），直接返回友好提示
+    # 常见模式：纯中文、无SQL关键字、包含句号等
+    if sql_stripped and not sql_stripped.upper().startswith(("SELECT", "INSERT", "UPDATE", "DELETE", "SHOW", "DESCRIBE", "USE")):
+        # 检查是否包含明显的非SQL文本特征
+        if any(patterns in sql_stripped for patterns in ["不需要", "无法", "不能", "不适用", "不需要使用", "抱歉", "错误"]):
+            return None, "我是一个基金数据查询助手，请询问关于产品、客户、持仓、跟进记录等数据库相关的问题，例如：帮我查询有哪些产品、客户持仓情况、跟进记录等。"
+    
     sql_upper = sql.strip().upper()
     if sql_upper.startswith("DELETE"):
         return None, "危险操作：不允许删除数据"
@@ -359,22 +369,10 @@ def run_agent(question: str) -> Dict:
                     sql_chunks.append(chunk_str)
             sql = clean_sql("".join(sql_chunks))
             
-            # 空SQL校验
+            # 空SQL校验 - 金融问题已由RAG处理，此处只处理数据库查询
             if not sql or sql.strip() == "":
-                # 检测是否涉及金融相关问题
-                finance_keywords = ["基金", "股票", "债券", "货币", "理财", "净值", "收益率", "ETF", "FOF", "LOF", "私募", "公募", "量化", "交易"]
-                is_finance_related = any(kw in question for kw in finance_keywords)
-                
-                if is_finance_related:
-                    # 流式调用LLM进行金融知识科普
-                    finance_prompt = f"""你是一个专业的金融理财顾问，请用通俗易懂的语言回答用户的问题。
-用户问题：{question}
+                return {"answer": "抱歉，我无法理解您的问题。我是一个基金数据查询助手，请询问关于产品、客户、持仓等数据库相关的问题。"}
 
-请给出专业但易懂的解答："""
-                    answer = stream_generate(finance_prompt)
-                    return {"answer": answer, "stream": True}
-                else:
-                    return {"answer": "抱歉，我无法理解您的问题。我是一个基金数据查询助手，请询问关于产品、客户、持仓等数据库相关的问题。"}
             data, msg = safe_execute_sql(sql, question)
             if data is None:
                 return {"answer": msg}
